@@ -53,6 +53,13 @@ def task_1(confirmed_df, deaths_df, recovered_df):
     df_confirmed = df_confirmed.drop(index=list_to_drop)
     df_deaths = df_deaths.drop(columns=['sum'])
 
+    df_deaths.columns = pd.to_datetime(df_deaths.columns)
+    df_deaths_monthly = df_deaths.groupby([df_deaths.columns.year, df_deaths.columns.month], axis=1).sum()
+    df_recovered.columns = pd.to_datetime(df_recovered.columns)
+    df_recovered_monthly = df_recovered.groupby([df_recovered.columns.year, df_recovered.columns.month], axis=1).sum()
+    mortality = df_deaths_monthly / df_recovered_monthly
+    print('\nZADANIE 1 - śmiertelność: ')
+    print(mortality)
 
     active_cases = df_confirmed - df_deaths - df_recovered
     print('\nZADANIE 1 - liczba aktywnych przypadków: ')
