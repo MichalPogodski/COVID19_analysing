@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from pandas.tseries.offsets import DateOffset
+from datetime import timedelta
 
 def data_collect():
 
@@ -39,8 +39,8 @@ def task_1(confirmed_df, deaths_df, recovered_df):
     for name in diff2:
         df_recovered.loc[name, :] = 0
         for date in df_recovered.columns[14:]:
-            active = df_confirmed.loc[name, date] - df_confirmed.loc[name, (date - DateOffset(days=14))]
-            dead = df_deaths.loc[name, date] - df_deaths.loc[name, (date - DateOffset(days=14))]
+            active = df_confirmed.loc[name, date] - df_confirmed.loc[name, (date - timedelta(days=14))]
+            dead = df_deaths.loc[name, date] - df_deaths.loc[name, (date - timedelta(days=14))]
             active = active - dead
             res = df_confirmed.loc[name, date] - df_deaths.loc[name, date] - active
             df_recovered.loc[name, date] = res
@@ -57,15 +57,52 @@ def task_1(confirmed_df, deaths_df, recovered_df):
     df_deaths_monthly = df_deaths.groupby([df_deaths.columns.year, df_deaths.columns.month], axis=1).sum()
     df_recovered.columns = pd.to_datetime(df_recovered.columns)
     df_recovered_monthly = df_recovered.groupby([df_recovered.columns.year, df_recovered.columns.month], axis=1).sum()
-    mortality = df_deaths_monthly / df_recovered_monthly
+    df_recovered_copy = df_recovered_monthly.copy()
+    df_recovered_copy[df_recovered_monthly == 0] = 1
+    mortality = df_deaths_monthly / df_recovered_copy
+    mortality[mortality > 1.0] = 1.0
     print('\nZADANIE 1 - śmiertelność: ')
     print(mortality)
 
     active_cases = df_confirmed - df_deaths - df_recovered
     print('\nZADANIE 1 - liczba aktywnych przypadków: ')
     print(active_cases)
+    #odrzucenie danych dla mniej niz 100 aktywnych przypadkow zostalo zaimplementowane w task_2
+    return active_cases
+
+
+def task_2(active_cases):
+    temp = active_cases.copy()
+    active_ov100 = temp[temp >= 100].fillna(0)
+    counting = active_ov100.copy()
+    counting[active_ov100 > 0] = 1
+
+    active_cases_copy = active_ov100.copy()
+    counting_copy = counting.copy()
+
+    for i in range(7, len(active_ov100.columns.values)):
+        for j in range(0, 6):
+            active_cases_copy.loc[:, active_cases_copy.columns[i]] += active_ov100.loc[:, active_cases_copy.columns[i - j]]
+            counting_copy.loc[:, active_cases_copy.columns[i]] += counting.loc[:, active_cases_copy.columns[i - j]]
+    # print(active_cases_copy)
+    # print(counting_copy)
+
+    cnt = counting_copy.copy()
+    cnt[counting_copy == 0] = 1
+    M = active_cases_copy / cnt
+    # print(M)
+
+    M_div = M.copy()
+    M_div[M == 0] = 1
+    R = M.copy()
+    for i in range(5, len(M.columns.values)):
+        R.loc[:, active_cases_copy.columns[i]] = M.loc[:, active_cases_copy.columns[i]] / M_div.loc[:, active_cases_copy.columns[i - 5]]
+    # print(R)
+
+    return R
 
 
 if __name__ == '__main__':
     confirmed_df, deaths_df, recovered_df = data_collect()
-    task_1(confirmed_df, deaths_df, recovered_df)
+    active_cases = task_1(confirmed_df, deaths_df, recovered_df)
+    R = task_2(active_cases)
